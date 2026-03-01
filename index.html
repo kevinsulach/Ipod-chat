@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
     <title>Private Chat</title>
     <style>
-        /* Main Layout with Personal Background */
         body { 
             font-family: -apple-system, Helvetica, sans-serif; 
             margin: 0; 
@@ -12,51 +11,49 @@
             background-size: cover; 
             display: flex; 
             flex-direction: column; 
-            height: 100vh; 
-            overflow: hidden;
+            height: 100vh;
+            position: fixed; /* Prevents bouncing on older iOS */
+            width: 100%;
         }
 
-        /* Login Screen Overlay */
         #login-overlay { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.9); z-index: 100; 
+            background: rgba(0,0,0,0.95); z-index: 1000; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; 
         }
 
-        /* Header Bar */
-        #header { background: rgba(255,255,255,0.9); padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ccc; }
+        #header { background: rgba(255,255,255,0.9); padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ccc; flex-shrink: 0; }
 
-        /* Message Area - Frosted Glass Effect */
         #messages { 
-            flex: 1; overflow-y: auto; padding: 15px; 
-            display: flex; flex-direction: column; 
+            flex: 1; overflow-y: scroll; -webkit-overflow-scrolling: touch; 
+            padding: 15px; display: flex; flex-direction: column; 
             background: rgba(255, 255, 255, 0.2); 
         }
 
-        /* Chat Bubbles */
         .msg { max-width: 75%; padding: 10px 14px; margin-bottom: 10px; border-radius: 18px; font-size: 16px; position: relative; word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: rgba(0, 122, 255, 0.9); color: white; border-bottom-right-radius: 4px; }
         .msg.them { align-self: flex-start; background: rgba(229, 229, 234, 0.9); color: black; border-bottom-left-radius: 4px; }
-        
-        /* Message Time */
-        .time { font-size: 10px; opacity: 0.6; margin-top: 5px; display: block; text-align: right; }
 
-        /* Input Area at Bottom */
-        #input-area { background: #fff; padding: 10px; display: flex; border-top: 1px solid #ccc; }
-        #text { flex: 1; border: 1px solid #ccc; padding: 10px; border-radius: 20px; font-size: 16px; outline: none; }
-        .btn { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 20px; margin-left: 5px; font-weight: bold; cursor: pointer; }
+        #input-area { 
+            background: #fff; 
+            padding: 10px 10px 30px 10px; /* Added 30px bottom padding for iPhone 15 notch */
+            display: flex; 
+            border-top: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+        #text { flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 20px; font-size: 16px; outline: none; }
+        .btn { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 20px; margin-left: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="login-overlay">
         <h2 style="color:white">Private Chat</h2>
-        <input type="password" id="pass-input" placeholder="Enter Password" style="padding:10px; border-radius:10px; border:none; width:200px; margin-bottom:10px;">
+        <input type="text" id="pass-input" placeholder="Enter Password" style="padding:12px; border-radius:10px; width:200px; margin-bottom:10px;">
         <button class="btn" onclick="checkLogin()">Unlock</button>
     </div>
 
     <div id="header">Secure Messenger</div>
-    
     <div id="messages"></div>
 
     <div id="input-area">
@@ -69,62 +66,65 @@
     <script>
         const server = "https://dumbo-chat.onrender.com"; 
         
-        // Use localStorage to remember name and password
-        let myName = localStorage.getItem('chatName') || prompt("Enter your name:") || "Guest";
+        var myName = localStorage.getItem('chatName') || prompt("Enter your name:") || "Guest";
         localStorage.setItem('chatName', myName);
-        let myPass = localStorage.getItem('chatPass') || "";
+        var myPass = localStorage.getItem('chatPass') || "";
 
-        // Function to check password with server
         function checkLogin() {
-            const typedPass = document.getElementById('pass-input').value;
+            var typedPass = document.getElementById('pass-input').value;
+            // Simple logic for older browsers
             fetch(server + "/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ password: typedPass })
-            }).then(res => {
-                if(res.ok) {
+            }).then(function(res) {
+                if(res.status === 200) {
                     myPass = typedPass;
                     localStorage.setItem('chatPass', myPass);
                     document.getElementById('login-overlay').style.display = 'none';
                     fetchMessages();
-                } else { alert("Wrong Password!"); }
+                } else {
+                    alert("Wrong Password!");
+                }
+            }).catch(function(err) {
+                alert("Connection Error. Try again.");
             });
         }
 
-        // Hide login if already authorized
         if(myPass) { document.getElementById('login-overlay').style.display = 'none'; }
 
         function fetchMessages() {
             if(!myPass) return;
             fetch(server + "/messages", { headers: { 'x-password': myPass } })
-                .then(res => res.json())
-                .then(data => {
-                    const box = document.getElementById("messages");
-                    box.innerHTML = "";
-                    data.forEach(m => {
-                        const side = m.user === myName ? "me" : "them";
-                        let content = m.type === 'image' 
-                            ? `<img src="${server}${m.url}" style="max-width:100%; border-radius:10px;">` 
-                            : `<b>${m.user}:</b><br>${m.text}`;
-                        box.innerHTML += `<div class="msg ${side}">${content}<span class="time">${m.time || ''}</span></div>`;
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var box = document.getElementById("messages");
+                    var html = "";
+                    data.forEach(function(m) {
+                        var side = m.user === myName ? "me" : "them";
+                        var content = m.type === 'image' 
+                            ? '<img src="' + server + m.url + '" style="max-width:100%; border-radius:10px;">' 
+                            : '<b>' + m.user + ':</b><br>' + m.text;
+                        html += '<div class="msg ' + side + '">' + content + '</div>';
                     });
+                    box.innerHTML = html;
                     box.scrollTop = box.scrollHeight;
                 });
         }
 
         function send() {
-            const input = document.getElementById("text");
+            var input = document.getElementById("text");
             if (!input.value) return;
             fetch(server + "/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ user: myName, text: input.value, password: myPass })
-            }).then(() => { input.value = ""; fetchMessages(); });
+            }).then(function() { input.value = ""; fetchMessages(); });
         }
 
         function uploadPhoto() {
-            const fileInput = document.getElementById('photo-input');
-            const formData = new FormData();
+            var fileInput = document.getElementById('photo-input');
+            var formData = new FormData();
             formData.append('photo', fileInput.files[0]);
             formData.append('user', myName);
             formData.append('password', myPass);
@@ -132,10 +132,10 @@
             fetch(server + "/upload", {
                 method: "POST",
                 body: formData
-            }).then(() => fetchMessages());
+            }).then(function() { fetchMessages(); });
         }
 
-        setInterval(fetchMessages, 3000);
+        setInterval(fetchMessages, 4000);
         if(myPass) fetchMessages();
     </script>
 </body>
