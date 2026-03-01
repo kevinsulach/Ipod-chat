@@ -2,124 +2,72 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Private Chat</title>
+    <title>Open Chat</title>
     <style>
-        body { 
-            font-family: -apple-system, Helvetica, sans-serif; 
-            margin: 0; 
-            background: url('bg.jpg') no-repeat center center fixed; 
-            background-size: cover; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh;
-            position: fixed; /* Prevents bouncing on older iOS */
-            width: 100%;
-        }
-
-        #login-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.95); z-index: 1000; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-        }
-
+        body { font-family: Helvetica, Arial, sans-serif; margin: 0; background: url('bg.jpg') no-repeat center center fixed; background-size: cover; display: flex; flex-direction: column; height: 100vh; width: 100%; position: fixed; }
         #header { background: rgba(255,255,255,0.9); padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ccc; flex-shrink: 0; }
-
-        #messages { 
-            flex: 1; overflow-y: scroll; -webkit-overflow-scrolling: touch; 
-            padding: 15px; display: flex; flex-direction: column; 
-            background: rgba(255, 255, 255, 0.2); 
-        }
-
+        #messages { flex: 1; overflow-y: scroll; -webkit-overflow-scrolling: touch; padding: 15px; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.2); }
         .msg { max-width: 75%; padding: 10px 14px; margin-bottom: 10px; border-radius: 18px; font-size: 16px; position: relative; word-wrap: break-word; }
-        .msg.me { align-self: flex-end; background: rgba(0, 122, 255, 0.9); color: white; border-bottom-right-radius: 4px; }
-        .msg.them { align-self: flex-start; background: rgba(229, 229, 234, 0.9); color: black; border-bottom-left-radius: 4px; }
-
-        #input-area { 
-            background: #fff; 
-            padding: 10px 10px 30px 10px; /* Added 30px bottom padding for iPhone 15 notch */
-            display: flex; 
-            border-top: 1px solid #ccc;
-            flex-shrink: 0;
-        }
+        .msg.me { align-self: flex-end; background: #007aff; color: white; border-bottom-right-radius: 4px; }
+        .msg.them { align-self: flex-start; background: #e5e5ea; color: black; border-bottom-left-radius: 4px; }
+        .time { font-size: 10px; opacity: 0.6; display: block; text-align: right; margin-top: 4px; }
+        #input-area { background: #fff; padding: 10px 10px 35px 10px; display: flex; border-top: 1px solid #ccc; flex-shrink: 0; }
         #text { flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 20px; font-size: 16px; outline: none; }
         .btn { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 20px; margin-left: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <h2 style="color:white">Private Chat</h2>
-        <input type="text" id="pass-input" placeholder="Enter Password" style="padding:12px; border-radius:10px; width:200px; margin-bottom:10px;">
-        <button class="btn" onclick="checkLogin()">Unlock</button>
-    </div>
-
-    <div id="header">Secure Messenger</div>
+    <div id="header">Chat Room</div>
     <div id="messages"></div>
 
     <div id="input-area">
         <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto()">
         <button class="btn" onclick="document.getElementById('photo-input').click()" style="background:#555">📷</button>
-        <input id="text" placeholder="iMessage" onkeypress="if(event.keyCode==13)send()">
+        <input id="text" placeholder="Message" onkeypress="if(event.keyCode==13)send()">
         <button class="btn" onclick="send()">Send</button>
     </div>
 
     <script>
-        const server = "https://dumbo-chat.onrender.com"; 
-        
+        var server = "https://dumbo-chat.onrender.com"; 
         var myName = localStorage.getItem('chatName') || prompt("Enter your name:") || "Guest";
         localStorage.setItem('chatName', myName);
-        var myPass = localStorage.getItem('chatPass') || "";
-
-        function checkLogin() {
-            var typedPass = document.getElementById('pass-input').value;
-            // Simple logic for older browsers
-            fetch(server + "/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password: typedPass })
-            }).then(function(res) {
-                if(res.status === 200) {
-                    myPass = typedPass;
-                    localStorage.setItem('chatPass', myPass);
-                    document.getElementById('login-overlay').style.display = 'none';
-                    fetchMessages();
-                } else {
-                    alert("Wrong Password!");
-                }
-            }).catch(function(err) {
-                alert("Connection Error. Try again.");
-            });
-        }
-
-        if(myPass) { document.getElementById('login-overlay').style.display = 'none'; }
 
         function fetchMessages() {
-            if(!myPass) return;
-            fetch(server + "/messages", { headers: { 'x-password': myPass } })
-                .then(function(res) { return res.json(); })
-                .then(function(data) {
+            var xhr = new XMLHttpRequest();
+            xhr.open("GET", server + "/messages", true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
                     var box = document.getElementById("messages");
                     var html = "";
-                    data.forEach(function(m) {
-                        var side = m.user === myName ? "me" : "them";
-                        var content = m.type === 'image' 
+                    for (var i = 0; i < data.length; i++) {
+                        var m = data[i];
+                        var side = (m.user === myName) ? "me" : "them";
+                        var content = (m.type === 'image') 
                             ? '<img src="' + server + m.url + '" style="max-width:100%; border-radius:10px;">' 
                             : '<b>' + m.user + ':</b><br>' + m.text;
-                        html += '<div class="msg ' + side + '">' + content + '</div>';
-                    });
+                        html += '<div class="msg ' + side + '">' + content + '<span class="time">' + (m.time || "") + '</span></div>';
+                    }
                     box.innerHTML = html;
                     box.scrollTop = box.scrollHeight;
-                });
+                }
+            };
+            xhr.send();
         }
 
         function send() {
             var input = document.getElementById("text");
             if (!input.value) return;
-            fetch(server + "/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user: myName, text: input.value, password: myPass })
-            }).then(function() { input.value = ""; fetchMessages(); });
+            var msgText = input.value;
+            input.value = "";
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", server + "/send", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) { fetchMessages(); }
+            };
+            xhr.send(JSON.stringify({ user: myName, text: msgText }));
         }
 
         function uploadPhoto() {
@@ -127,16 +75,16 @@
             var formData = new FormData();
             formData.append('photo', fileInput.files[0]);
             formData.append('user', myName);
-            formData.append('password', myPass);
-
-            fetch(server + "/upload", {
-                method: "POST",
-                body: formData
-            }).then(function() { fetchMessages(); });
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", server + "/upload", true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) { fetchMessages(); }
+            };
+            xhr.send(formData);
         }
 
         setInterval(fetchMessages, 4000);
-        if(myPass) fetchMessages();
+        fetchMessages();
     </script>
 </body>
 </html>
