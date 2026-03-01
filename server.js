@@ -12,7 +12,7 @@ app.use('/uploads', express.static('uploads'));
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "messages.json";
-const CHAT_PASSWORD = "YourSecretPassword123"; // CHANGE THIS!
+const CHAT_PASSWORD = "KD123"; // CHANGE THIS!
 
 // Storage Setup
 const storage = multer.diskStorage({
