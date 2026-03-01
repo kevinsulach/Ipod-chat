@@ -1,24 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
-    <title>Open Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Chat Room</title>
     <style>
-        body { font-family: Helvetica, Arial, sans-serif; margin: 0; background: url('bg.jpg') no-repeat center center fixed; background-size: cover; display: flex; flex-direction: column; height: 100vh; width: 100%; position: fixed; }
-        #header { background: rgba(255,255,255,0.9); padding: 15px; text-align: center; font-weight: bold; border-bottom: 1px solid #ccc; flex-shrink: 0; }
-        #messages { flex: 1; overflow-y: scroll; -webkit-overflow-scrolling: touch; padding: 15px; display: flex; flex-direction: column; background: rgba(255, 255, 255, 0.2); }
+        /* Main Layout */
+        body { 
+            font-family: -apple-system, Helvetica, Arial, sans-serif; 
+            margin: 0; 
+            background: url('bg.jpg') no-repeat center center fixed; 
+            background-size: cover; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            width: 100%; 
+            position: fixed; 
+            overflow: hidden; 
+        }
+
+        /* Header Bar */
+        #header { 
+            background: rgba(255,255,255,0.9); 
+            padding: 15px; 
+            padding-top: 40px; /* Extra space for iPhone 15 Dynamic Island */
+            text-align: center; 
+            font-weight: bold; 
+            border-bottom: 1px solid #ccc; 
+            flex-shrink: 0; 
+        }
+
+        /* Message Area */
+        #messages { 
+            flex: 1; 
+            overflow-y: scroll; 
+            -webkit-overflow-scrolling: touch; 
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            background: rgba(255, 255, 255, 0.2); 
+        }
+
+        /* Bubbles */
         .msg { max-width: 75%; padding: 10px 14px; margin-bottom: 10px; border-radius: 18px; font-size: 16px; position: relative; word-wrap: break-word; }
         .msg.me { align-self: flex-end; background: #007aff; color: white; border-bottom-right-radius: 4px; }
         .msg.them { align-self: flex-start; background: #e5e5ea; color: black; border-bottom-left-radius: 4px; }
         .time { font-size: 10px; opacity: 0.6; display: block; text-align: right; margin-top: 4px; }
-        #input-area { background: #fff; padding: 10px 10px 35px 10px; display: flex; border-top: 1px solid #ccc; flex-shrink: 0; }
+
+        /* Input Area - Lifted for iPhone 15 & iPod compatibility */
+        #input-area { 
+            background: #fff; 
+            padding: 10px 10px 45px 10px; /* Lifted height for bottom bars */
+            display: flex; 
+            border-top: 1px solid #ccc; 
+            flex-shrink: 0; 
+            position: relative;
+            z-index: 10;
+        }
+
         #text { flex: 1; border: 1px solid #ccc; padding: 12px; border-radius: 20px; font-size: 16px; outline: none; }
-        .btn { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 20px; margin-left: 5px; font-weight: bold; }
+        .btn { background: #007aff; color: white; border: none; padding: 10px 15px; border-radius: 20px; margin-left: 5px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="header">Chat Room</div>
+    <div id="header">Secure Chat</div>
     <div id="messages"></div>
 
     <div id="input-area">
@@ -29,10 +76,17 @@
     </div>
 
     <script>
+        // Use YOUR URL here
         var server = "https://dumbo-chat.onrender.com"; 
-        var myName = localStorage.getItem('chatName') || prompt("Enter your name:") || "Guest";
-        localStorage.setItem('chatName', myName);
+        
+        // Setup User Identity
+        var myName = localStorage.getItem('chatName');
+        if (!myName) {
+            myName = prompt("Enter your name:") || "Guest";
+            localStorage.setItem('chatName', myName);
+        }
 
+        // Fetch Messages using XMLHttpRequest for iOS 9 compatibility
         function fetchMessages() {
             var xhr = new XMLHttpRequest();
             xhr.open("GET", server + "/messages", true);
@@ -56,11 +110,13 @@
             xhr.send();
         }
 
+        // Send Text Message
         function send() {
             var input = document.getElementById("text");
             if (!input.value) return;
             var msgText = input.value;
             input.value = "";
+            
             var xhr = new XMLHttpRequest();
             xhr.open("POST", server + "/send", true);
             xhr.setRequestHeader("Content-Type", "application/json");
@@ -70,11 +126,15 @@
             xhr.send(JSON.stringify({ user: myName, text: msgText }));
         }
 
+        // Upload Photo
         function uploadPhoto() {
             var fileInput = document.getElementById('photo-input');
+            if (!fileInput.files[0]) return;
+            
             var formData = new FormData();
             formData.append('photo', fileInput.files[0]);
             formData.append('user', myName);
+
             var xhr = new XMLHttpRequest();
             xhr.open("POST", server + "/upload", true);
             xhr.onreadystatechange = function() {
@@ -83,6 +143,7 @@
             xhr.send(formData);
         }
 
+        // Refresh every 4 seconds
         setInterval(fetchMessages, 4000);
         fetchMessages();
     </script>
