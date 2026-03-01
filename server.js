@@ -8,13 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static(__dirname));
-// This allows the browser to see the "uploads" folder
-app.use('/uploads', express.static('uploads')); 
+app.use('/uploads', express.static('uploads'));
 
 const PORT = process.env.PORT || 3000;
 const DB_FILE = "messages.json";
+const CHAT_PASSWORD = "YourSecretPassword123"; // CHANGE THIS!
 
-// Configure where to save photos
+// Storage Setup
 const storage = multer.diskStorage({
   destination: 'uploads/',
   filename: (req, file, cb) => {
@@ -22,8 +22,6 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage: storage });
-
-// Ensure uploads folder exists
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 function loadMessages() {
@@ -35,10 +33,23 @@ function saveMessages(messages) {
   fs.writeFileSync(DB_FILE, JSON.stringify(messages, null, 2));
 }
 
-app.get("/messages", (req, res) => res.json(loadMessages()));
+// Check Password Route
+app.post("/login", (req, res) => {
+  if (req.body.password === CHAT_PASSWORD) {
+    res.json({ status: "ok" });
+  } else {
+    res.status(401).json({ status: "error", message: "Wrong Password" });
+  }
+});
 
-// Handle text messages
+app.get("/messages", (req, res) => {
+  // Simple protection: Check if password was sent in headers
+  if (req.headers['x-password'] !== CHAT_PASSWORD) return res.status(401).send("Unauthorized");
+  res.json(loadMessages());
+});
+
 app.post("/send", (req, res) => {
+  if (req.body.password !== CHAT_PASSWORD) return res.status(401).send("Unauthorized");
   const messages = loadMessages();
   messages.push({
     user: req.body.user,
@@ -50,8 +61,8 @@ app.post("/send", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Handle photo uploads
 app.post("/upload", upload.single('photo'), (req, res) => {
+  if (req.body.password !== CHAT_PASSWORD) return res.status(401).send("Unauthorized");
   const messages = loadMessages();
   messages.push({
     user: req.body.user,
@@ -63,4 +74,4 @@ app.post("/upload", upload.single('photo'), (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Secure Server running on port ${PORT}`));
